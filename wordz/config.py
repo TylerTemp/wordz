@@ -4,24 +4,32 @@ from wordz.multi_select import MultiSelect
 from wordz.single_select import SingleSelect
 
 class Config(object):
+    SPELL = 0
+    CHOOSE_WORD = 1
+    CHOOSE_MEANING = 2
+
+    SHUFFLE = 0
+    ASCEND = 1
+    DESCEND = 2
 
     def __init__(self):
         self.type = MultiSelect(
             ['Give meaning and spell the word',
              'Give meaning and choose the word',
-             'Give word and choose the meaning'], default=(0,), padding=4)
+             'Give word and choose the meaning'],
+            default=(self.SPELL,), padding=4)
         self.order = SingleSelect(
             ['Shuffle',
              'Ascend',
              'Descend',
-            ], default=0, padding=4)
+            ], default=self.SHUFFLE, padding=4)
         self.repeat = MultiSelect(
             ['Appear a word repeatedly till I answer it right'],
             default=(0,),
             padding=4)
 
         self.active = self.type
-
+        self.entered = False
 
     def render(self, screen):
         self.render_title(screen)
@@ -56,6 +64,17 @@ class Config(object):
     def active_color(self):
         return curses.color_pair(13)
 
+    @property
+    def quiz_type(self):
+        return self.type.select
+
+    @property
+    def order_by(self):
+        return self.order.select
+
+    @property
+    def repeat_wrong(self):
+        return bool(self.repeat.select)
 
     def handler(self, k):
         if k == keys.KEY_TAB:
@@ -64,8 +83,27 @@ class Config(object):
             if index > 2:
                 index = 0
             self.active = order[index]
+        elif k == keys.KEY_ENTER:
+            self.entered = True
         else:
             self.active.handler(k)
+
+    def done(self):
+        if not self.entered:
+            return False
+        if not self.quiz_type:
+            self.entered = False
+            self.active = self.type
+            return False
+        return True
+
+    def get_quiz_type(self):
+        quiz_type = self.quiz_type
+        return {
+            'spell': self.SPELL in quiz_type,
+            'choose_word': self.CHOOSE_WORD in quiz_type,
+            'choose_meaning': self.CHOOSE_MEANING in quiz_type,
+        }
 
 
 def main(stdscr):

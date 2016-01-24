@@ -1,4 +1,3 @@
-import textwrap
 import curses
 import logging
 from wordz import keys
@@ -13,7 +12,6 @@ class MultiSelect(object):
         self.content = content
         self.current = 0
         self.select = set(default or ())
-        self.selected = False
         self.padding = padding
         self.lineno = lineno
 
@@ -48,9 +46,6 @@ class MultiSelect(object):
                 screen.write('\n')
 
     def handler(self, k):
-        if k == keys.KEY_ENTER:
-            self.selected = True
-            return
 
         if k == keys.KEY_SPACE:
             current = self.current
@@ -95,24 +90,23 @@ class MultiSelect(object):
 
         self.current = current
 
-    def get_selected(self):
-        if not self.selected:
-            return None
+    def get(self):
         return self.select
-
 
 
 def main(stdscr): 
     # import string
+    import sys
+    import atexit
     ms = MultiSelect([('中文%s' % x) * 20 for x in range(4)], padding=5, default=[0, 3], lineno=True)
     # ss = SingleSelect('ABCD', [(string.ascii_letters) * 4 for x in range(4)])
     screen = Screen(stdscr)
-    while ms.get_selected() is None:
+
+    atexit.register(lambda: sys.stdout.write(str(ms.select)))
+    while True:
         with screen.handle(ms.handler) as s:
             s.clear()
             ms.render(s)
-    else:
-        print(ms.get_selected())
 
 
 if __name__ == '__main__':

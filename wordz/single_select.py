@@ -43,9 +43,9 @@ class SingleSelect(object):
                 screen.write('\n')
 
     def handler(self, k):
-        if k in (keys.KEY_ENTER, keys.KEY_SPACE):
-            self.select = self.current
-            return
+        # if k in (keys.KEY_ENTER, keys.KEY_SPACE):
+        #     self.select = self.current
+        #     return
 
         if k == keys.KEY_UP:
             offset = -1
@@ -61,7 +61,7 @@ class SingleSelect(object):
             else:
                 return
             
-            self.select = index
+            self.select = self.current = index
             return
 
         max_num = len(self.content) - 1
@@ -73,7 +73,7 @@ class SingleSelect(object):
         elif current > max_num:
             current = 0
 
-        self.current = current
+        self.current = self.select = current
 
     def get_selected(self):
         return self.select
@@ -82,17 +82,22 @@ class SingleSelect(object):
     def select_item(self, index):
         self.select = index
 
+    def get(self):
+        return self.select
+
+
 def main(stdscr): 
     import string
+    import sys
+    import atexit
     ss = SingleSelect([('中文%s' % x) * 20 for x in range(4)], padding=5, lineno=True)
     # ss = SingleSelect('ABCD', [(string.ascii_letters) * 4 for x in range(4)])
     screen = Screen(stdscr)
-    while ss.get_selected() is None:
-        with screen.handle(ss.hanlder) as s:
+    atexit.register(lambda: sys.__stdout__.write('select %s' % ss.select))
+    while True:
+        with screen.handle(ss.handler) as s:
             s.clear()
             ss.render(s)
-    else:
-        print(ss.get_selected())
 
 
 if __name__ == '__main__':
