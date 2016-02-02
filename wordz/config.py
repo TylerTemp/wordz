@@ -31,6 +31,15 @@ class Config(object):
         self.active = self.type
         self.entered = False
 
+    @classmethod
+    def manual_init(cls, type_, order, repeat):
+        self = cls()
+        self.type.select = type_
+        self.order.select = order
+        self.repeat.select = (0,) if repeat else ()
+        self.entered = True
+        return self
+
     def render(self, screen):
         self.render_title(screen)
         screen.write('\n\n')

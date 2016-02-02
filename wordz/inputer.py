@@ -25,10 +25,13 @@ class Inputer(object):
         if k in (keys.KEY_DELETE, keys.KEY_BACKSPACE):
             if self.inputted:
                 self.inputted.pop()
-            return
+            return False
 
         if k != keys.KEY_ENTER:
             self.inputted.append(chr(k))
+            return False
+
+        return True
 
     @property
     def place_color(self):

@@ -59,10 +59,10 @@ class SingleSelect(object):
                 if 0 <= index < allowed:
                     break
             else:
-                return
+                return False
             
             self.select = self.current = index
-            return
+            return True
 
         max_num = len(self.content) - 1
 
@@ -74,6 +74,7 @@ class SingleSelect(object):
             current = 0
 
         self.current = self.select = current
+        return False
 
     def get_selected(self):
         return self.select

@@ -1,8 +1,42 @@
+"""
+Usage:
+    wordz [options]
+          [--shuffle|--ascend|--descend]
+          [--no-repeat]
+          [--preview=<n>]
+          [--skip=<n>] [--limit=<n>]
+          <file>...
+
+Quiz Options:
+    --spell           [default]
+    --choose-word
+    --choose-meaning
+    -n --no-repeat
+    -p --preview=<n>  [default: 0]
+
+Order Options:
+    -s --shuffle
+    -a --ascend
+    -d --descend
+
+Words Options:
+    --skip=<n>        [default: 0]
+    --limit=<n>       [default: INF]
+    -o --out=<file>
+
+Other Options:
+    --debug=<file>
+    -v --version
+    -h --help
+"""
+
 import curses
 import sys
 import atexit
 import logging
 import random
+import docpie
+import json
 try:
     from io import StringIO
 except ImportError:
@@ -35,6 +69,7 @@ def redirect():
 @atexit.register
 def redirect_restore():
     logger.debug('exiting...')
+    global _REDIRECTED
     if _REDIRECTED:
         _fake_out.seek(0)
         _fake_err.seek(0)
@@ -49,23 +84,27 @@ def redirect_restore():
             sys.stderr(get_exc_plus())
         sys.stdout.flush()
         sys.stderr.flush()
+        _REDIRECTED = False
     
 
-def main(stdscr):
-    redirect()
-    words = Words('words2.json')
-    config = Config()
-    screen_ui = Screen(stdscr)
-    logger.debug('enter config')
-    while not config.done():
-        with screen_ui.handle(config.handler) as screen:
-            screen.clear()
-            config.render(screen)
+def main(stdscr, config, words):
+    # words = Words('words2.json')
+    # config = Config()
+    # screen_ui = Screen(stdscr)
+    # logger.debug('enter config')
+    # while not config.done():
+    #     with screen_ui.handle(config.handler) as screen:
+    #         screen.clear()
+    #         config.render(screen)
+    #
+    #     logger.debug('type: %s; order: %s; repeat: %s',
+    #                  config.quiz_type, config.order_by, config.repeat_wrong)
+    # else:
+    #     sort(words, config)
 
-        logger.debug('type: %s; order: %s; repeat: %s',
-                     config.quiz_type, config.order_by, config.repeat_wrong)
-    else:
-        sort(words, config)
+    # config, words = get_command()
+
+    screen_ui = Screen(stdscr)
 
     current = True
     prev = None
@@ -111,22 +150,31 @@ def main(stdscr):
             prev = {'title': status['title'],
                     'right': right,
                     'wrong': wrong}
-            if config.repeat:
-                words.record(status['word'], config.repeat)
+            words.record(status['word'], config.repeat_wrong)
         else:
             prev = None
 
-    
+    width = screen_ui.width
+    screen_ui.close()
+    print(words.render_record(width))
+
+    save = getattr(config, 'save_file', None)
+    if save:
+        with open(save, 'w', encoding='utf-8') as f:
+            json.dump(words.formal_record(), f, indent=2, ensure_ascii=False)
+        logger.info('saved to %s', save)
+
 
 def handle_quiz(k, ui, status):
     if k == keys.KEY_TAB:
         pass
     elif k == keys.KEY_ESCAPE:
         pass
-    elif k == keys.KEY_ENTER:
-        status['input'] = ui.get()
+    # elif k == keys.KEY_ENTER:
+    #     status['input'] = ui.get()
     else:
-        ui.handler(k)
+        if ui.handler(k):
+            status['input'] = ui.get()
 
 def sort(words, config):
     if config.order_by == config.SHUFFLE:
@@ -172,6 +220,8 @@ def parse_status(status, words, config):
                 if guess not in options:
                     options.append(guess)
 
+        random.shuffle(options)
+
         status['answer'] = [options.index(this_word)]
         if this_quiz_type == 'choose_word':
             status['title'] = parse_meaning(this_word)
@@ -180,7 +230,7 @@ def parse_status(status, words, config):
             status['title'] = parse_spell(this_word)
             to_choose = [parse_meaning(x) for x in options]
         status['content'] = to_choose
-        status['ui'] = SingleSelect(to_choose, padding=2)
+        status['ui'] = SingleSelect(to_choose, padding=2, lineno=True)
 
 def parse_meaning(word):
     result = []
@@ -199,8 +249,11 @@ def parse_spell(word):
     return result
 
 def render_bar(words, error, screen):
+    logger.debug('current: %s', [each['spell'] for each in words.current])
+    logger.debug('next_round: %s', [each['spell'] for each in words._next_round])
     total = len(words.words)
     rest = len(words.current) + len(words._next_round) + 1
+    logger.debug(rest)
     checked = total - rest
     width = screen.width - 2
     num_str = '%s/%s' % (checked, total)
@@ -244,10 +297,11 @@ def get_key(stdscr):
 
 
 if __name__ == '__main__':
-    from wordz.bashlog import stdoutlogger, filelogger, DEBUG
+    from wordz.bashlog import stdoutlogger, filelogger, DEBUG, CRITICAL
     open('/tmp/wordz.log', 'w').close()
     stdoutlogger(None, DEBUG)
     filelogger('/tmp/wordz.log')
+    logging.getLogger('docpie').setLevel(CRITICAL)
     curses.wrapper(main)
     # curses.wrapper(get_key)
     # main()
