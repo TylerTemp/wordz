@@ -41,7 +41,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-        'wordz = __main__:main'
+        'wordz = wordz.__main__:main'
         ]
     },
     platforms='POSIX',
