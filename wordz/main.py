@@ -156,12 +156,17 @@ def main(stdscr, config, words):
 
     width = screen_ui.width
     screen_ui.close()
+    redirect_restore()
+    print('')
     print(words.render_record(width))
 
     save = getattr(config, 'save_file', None)
     if save:
-        with open(save, 'w', encoding='utf-8') as f:
-            json.dump(words.formal_record(), f, indent=2, ensure_ascii=False)
+        if hasattr(save, 'write'):
+            json.dump(words.formal_record(), save, indent=2, ensure_ascii=False)
+        else:
+            with open(save, 'w', encoding='utf-8') as f:
+                json.dump(words.formal_record(), f, indent=2, ensure_ascii=False)
         logger.info('saved to %s', save)
 
 
@@ -170,8 +175,8 @@ def handle_quiz(k, ui, status):
         pass
     elif k == keys.KEY_ESCAPE:
         pass
-    # elif k == keys.KEY_ENTER:
-    #     status['input'] = ui.get()
+    elif k == keys.KEY_ENTER:
+        status['input'] = ui.get()
     else:
         if ui.handler(k):
             status['input'] = ui.get()
@@ -235,7 +240,7 @@ def parse_status(status, words, config):
 def parse_meaning(word):
     result = []
     for k, v in word['meaning'].items():
-        if k is None:
+        if not k:
             result.append(v)
         else:
             result.append('[%s] %s' % (k, '; '.join(v)))

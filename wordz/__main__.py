@@ -1,10 +1,17 @@
 from wordz.main import main as wordz_main, redirect, __doc__
 from wordz.config import Config
 from wordz.words import Words
-from wordz.bashlog import stdoutlogger, filelogger, DEBUG
+from wordz.bashlog import stdoutlogger, filelogger, DEBUG, INFO
 import curses
 import docpie
 import logging
+try:
+    from io import StringIO
+except ImportError:
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from StringIO import StringIO
 
 logger = logging.getLogger()
 logging.getLogger('docpie').setLevel(logging.CRITICAL)
@@ -16,7 +23,7 @@ def get_command():
     if pie['--debug']:
         filelogger(pie['--debug'], logger)
 
-    stdoutlogger(logger, DEBUG)
+    stdoutlogger(logger, INFO)
 
     logger.debug(pie)
     type_ = []
@@ -39,7 +46,11 @@ def get_command():
     config = Config.manual_init(type_=type_, order=order,
                                 repeat=not pie['--no-repeat'])
 
-    config.save_file = pie['--out']
+    outfile = pie['--out']
+    if outfile:
+        config.save_file = outfile
+    else:
+        config.save_file = StringIO()
 
     files = pie['<file>']
     start = int(pie['--skip'])
@@ -58,8 +69,8 @@ def get_command():
 def main():
     redirect()
     config, words = get_command()
-    # return curses.wrapper(wordz_main, config, words)
-    return wordz_main(curses.initscr(), config, words)
+    return curses.wrapper(wordz_main, config, words)
+    # return wordz_main(curses.initscr(), config, words)
 
 if __name__ == '__main__':
     import sys
